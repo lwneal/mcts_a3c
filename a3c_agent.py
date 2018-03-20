@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
+SAVE_DIR = 'breakout-v0/'
 
 class NNPolicy(torch.nn.Module): # an actor-critic neural network
     def __init__(self, channels, num_actions):
@@ -36,7 +37,7 @@ class NNPolicy(torch.nn.Module): # an actor-critic neural network
 class A3CAgent():
     def __init__(self, action_space):
         self.model = NNPolicy(channels=1, num_actions=action_space.n)
-        self.model.try_load('pong-v0/')
+        self.model.try_load(SAVE_DIR)
         self.hx = Variable(torch.zeros(1, 256))
         self.cx = Variable(torch.zeros(1, 256))
 
