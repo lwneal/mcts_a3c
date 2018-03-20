@@ -19,44 +19,76 @@ class Node():
         self.state = state
         self.children = {}
         self.parent = parent
-        self.reward = 
+        self.reward = 0
+        self.visits = 0
 
 
 class MCTSAgent():
     def __init__(self, action_space):
         self.action_space = action_space
     
-    def act(self, state, env):
-        root = Node()
-        root_env = env.
-        current = root
-        for _ in range(100):
+    def act(self, state, env, search_size=100):
+        original_state = env.unwrapped.clone_full_state()
+
+        root = Node(state, parent=None)
+        for _ in range(search_size):
             # Selection/Expansion: Find a new leaf node using the Tree Policy
             leaf = self.explore_to_leaf(root, env)
 
             # Simulation: Perform a "playout" or "rollout" with the Default Policy
-            rollout_reward = self.play_to_end(leaf)
+            playout_reward = self.play_to_end(leaf, env)
 
-            # Backup or Backpropagation: Add to the reward in all parent nodes
-            # (NOT to be confused with backpropagation in neural nets)
+            # Backup: Add to the reward in all parent nodes
             while leaf is not None:
-                leaf.total_reward += reward
-        return 0
+                leaf.reward += playout_reward
+                leaf.visits += 1
+                leaf = leaf.parent
+
+            # Put things back the way they were
+            env.unwrapped.restore_full_state(original_state)
+
+        # Select the best action from among the root's children
+        best_action = 0
+        best_score = -float('inf')
+        for action, child in root.children.items():
+            score = child.reward / child.visits
+            if score > best_score:
+                best_score = score
+                best_action = action
+        print('Best action: {} with expected reward {}'.format(best_action, best_score))
+        return best_action
     
     def explore_to_leaf(self, root, env):
+        # This is the part where we use the UCB formula
         node = root
         while True:
             action = self.action_space.sample()  # TODO: Tree Policy
-            state = 
+            state, reward, done, _ = env.step(action)
             if node.children.get(action) is None:
-                node.children[action] = Node(state = 
-        return curr
+                # Expansion: Add this node to the tree
+                node.children[action] = Node(state, parent=node)
+                return node.children[action]
+            node = node.children[action]
+
+    def play_to_end(self, leaf, env):
+        # This is what you call a 'simulation', a 'playout', or a 'rollout'
+        cumulative_reward = 0
+        while True:
+            action = self.action_space.sample()  # TODO: Default Policy
+            state, reward, done, _ = env.step(action)
+            cumulative_reward += reward
+            # Heuristic: Stop search at any reward
+            if reward != 0:
+                done = True
+            if done:
+                break
+        return cumulative_reward
 
 
 def play(args):
     print("Creating gym with args: {}".format(args))
     env = gym.make(args.env)
-    env.unwrapped.frameskip = 10
+    env.unwrapped.frameskip = 4
     state = torch.Tensor(preprocess(env.reset())) # get first state
     agent = MCTSAgent(env.action_space)
 
@@ -70,6 +102,7 @@ def play(args):
         # Take that action
         state, reward, done, _ = env.step(action)
         cumulative_reward += reward
+        imutil.show(state, video_filename='pure_mcts.mjpeg')
         if done:
             print("Restarting game after frame {}".format(num_frames))
             num_games += 1
@@ -88,17 +121,6 @@ def preprocess(img):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('--env', default='PongNoFrameskip-v4', type=str, help='gym environment')
-    parser.add_argument('--lstm_steps', default=20, type=int, help='steps to train LSTM over')
-    parser.add_argument('--lr', default=1e-4, type=float, help='learning rate')
-    parser.add_argument('--gamma', default=0.99, type=float, help='discount for gamma-discounted rewards')
-    parser.add_argument('--tau', default=1.0, type=float, help='discount for generalized advantage estimation')
-    parser.add_argument('--horizon', default=0.99, type=float, help='horizon for running averages')
     args = parser.parse_args()
 
-    args.save_dir = '{}/'.format(args.env.lower()) # keep the directory structure simple
-    args.num_actions = gym.make(args.env).action_space.n # get the action space of this game
-
-    if not os.path.exists(args.save_dir):
-        os.makedirs(args.save_dir)
-    print("A3C calling train...")
     play(args)
