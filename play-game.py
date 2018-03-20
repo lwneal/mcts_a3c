@@ -12,8 +12,9 @@ import imutil
 
 from mcts_agent import MCTSAgent
 from a3c_agent import A3CAgent
+from mctsa3c_agent import MCTSA3CAgent
 
-MAX_FRAMES = 1000 * 10
+MAX_FRAMES = 200
 
 
 def play(args, AgentType):
@@ -35,9 +36,9 @@ def play(args, AgentType):
         # Take that action
         state, reward, done, _ = env.step(action)
         cumulative_reward += reward
-        imutil.show(state, video_filename=args.video)
+        imutil.show(state, video_filename=args.video, display=(num_frames%10 == 0))
         state = torch.Tensor(preprocess(state))
-        imutil.show(state, save=False)
+        #imutil.show(state, save=False)
         if done:
             print("Restarting game after frame {}".format(num_frames))
             num_games += 1
