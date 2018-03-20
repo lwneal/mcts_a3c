@@ -62,13 +62,23 @@ class MCTSAgent():
         # This is the part where we use the UCB formula
         node = root
         while True:
-            action = self.action_space.sample()  # TODO: Tree Policy
+            action = self.tree_policy(node)
             state, reward, done, _ = env.step(action)
             if node.children.get(action) is None:
                 # Expansion: Add this node to the tree
                 node.children[action] = Node(state, parent=node)
                 return node.children[action]
             node = node.children[action]
+
+    def tree_policy(self, node):
+        # First try any unexplored action
+        for a in range(self.action_space.n):
+            if a not in node.children:
+                return a
+        # Then try the UCB-optimal action
+        def ucb(node):
+            return node.reward / node.visits + np.sqrt(np.log(node.parent.visits) / node.visits)
+        return max(node.children, key=lambda a: ucb(node.children[a]))
 
     def play_to_end(self, leaf, env):
         # This is what you call a 'simulation', a 'playout', or a 'rollout'
@@ -89,6 +99,7 @@ def play(args):
     print("Creating gym with args: {}".format(args))
     env = gym.make(args.env)
     env.unwrapped.frameskip = 4
+    env._max_episode_steps = MAX_FRAMES
     state = torch.Tensor(preprocess(env.reset())) # get first state
     agent = MCTSAgent(env.action_space)
 
