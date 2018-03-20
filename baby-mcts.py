@@ -27,7 +27,7 @@ class MCTSAgent():
     def __init__(self, action_space):
         self.action_space = action_space
     
-    def act(self, state, env, search_size=100):
+    def act(self, state, env, search_size=30):
         original_state = env.unwrapped.clone_full_state()
 
         root = Node(state, parent=None)
@@ -80,15 +80,19 @@ class MCTSAgent():
             return node.reward / node.visits + np.sqrt(np.log(node.parent.visits) / node.visits)
         return max(node.children, key=lambda a: ucb(node.children[a]))
 
-    def play_to_end(self, leaf, env):
+    def play_to_end(self, leaf, env, depth_limit=40):
         # This is what you call a 'simulation', a 'playout', or a 'rollout'
         cumulative_reward = 0
+        depth = 0
         while True:
             action = self.action_space.sample()  # TODO: Default Policy
             state, reward, done, _ = env.step(action)
             cumulative_reward += reward
             # Heuristic: Stop search at any reward
             if reward != 0:
+                done = True
+            depth += 1
+            if depth > depth_limit:
                 done = True
             if done:
                 break
@@ -99,7 +103,7 @@ def play(args):
     print("Creating gym with args: {}".format(args))
     env = gym.make(args.env)
     env.unwrapped.frameskip = 4
-    env._max_episode_steps = MAX_FRAMES
+    env._max_episode_steps = None
     state = torch.Tensor(preprocess(env.reset())) # get first state
     agent = MCTSAgent(env.action_space)
 
