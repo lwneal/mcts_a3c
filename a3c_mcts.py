@@ -159,7 +159,7 @@ class FullState(object):
         self.env = gym.make(args.env) # make a local (unshared) environment
         self.env.seed(args.seed) 
         self.env = self.env.unwrapped
-        torch.manual_seed(args.seed ) # seed everything
+        torch.manual_seed(args.seed) # seed everything
     
         self.model = NNPolicy(channels=1, num_actions=args.num_actions)
         self.model.load_state_dict(shared_model.state_dict())
@@ -296,6 +296,7 @@ def train(rank, args, info):
             action = logp.max(1)[1].data if args.test else torch.exp(logp).multinomial().data[0]
             act = action.numpy()[0]
             if perform_mcts(info['frames'], episode_length):
+                print("Running rollout() with strategy {}".format(strategy))
                 act = rollout(FullState(model, env, state, cx, hx, episode_length, args.lstm_steps), num_frames, rollouts, strategy)
             state, reward, done, _ = env.step(act)
             
