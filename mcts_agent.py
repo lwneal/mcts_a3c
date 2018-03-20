@@ -14,7 +14,7 @@ class MCTSAgent():
     def __init__(self, action_space):
         self.action_space = action_space
     
-    def act(self, state, env, search_size=100):
+    def act(self, state, env, search_size=50):
         original_state = env.unwrapped.clone_full_state()
 
         root = Node(state, parent=None)
@@ -67,7 +67,7 @@ class MCTSAgent():
             return node.reward / node.visits + np.sqrt(np.log(node.parent.visits) / node.visits)
         return max(node.children, key=lambda a: ucb(node.children[a]))
 
-    def play_to_end(self, leaf, env, depth_limit=25):
+    def play_to_end(self, leaf, env, depth_limit=40):
         # This is what you call a 'simulation', a 'playout', or a 'rollout'
         cumulative_reward = 0
         depth = 0
